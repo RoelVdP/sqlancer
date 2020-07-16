@@ -55,8 +55,6 @@ public class PostgresProvider extends ProviderAdapter<PostgresGlobalState, Postg
 
     public static boolean generateOnlyKnown;
 
-    private PostgresGlobalState globalState;
-
     protected String entryURL;
     protected String username;
     protected String password;
@@ -307,9 +305,7 @@ public class PostgresProvider extends ProviderAdapter<PostgresGlobalState, Postg
             }
             for (String lc : Arrays.asList("LC_COLLATE", "LC_CTYPE")) {
                 if (Randomly.getBoolean()) {
-                    globalState = new PostgresGlobalState();
-                    globalState.setConnection(con);
-                    sb.append(String.format(" %s = '%s'", lc, Randomly.fromList(globalState.getCollates())));
+                    sb.append(String.format(" %s = '%s'", lc, Randomly.fromList(state.getCollates())));
                 }
             }
             sb.append(" TEMPLATE template0");

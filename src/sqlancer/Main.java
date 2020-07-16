@@ -321,17 +321,15 @@ public final class Main {
             return command;
         }
 
+        public void testConnection() throws SQLException {
+            G state = getInitializedGlobalState();
+            try (Connection con = provider.createDatabase(state)) {
+                return;
+            }
+        }
+
         public void run() throws SQLException {
-            G state = createGlobalState();
-            stateToRepro = provider.getStateToReproduce(databaseName);
-            stateToRepro.seedValue = seed;
-            state.setState(stateToRepro);
-            logger = new StateLogger(databaseName, provider, options);
-            Randomly r = new Randomly(seed);
-            state.setRandomly(r);
-            state.setDatabaseName(databaseName);
-            state.setMainOptions(options);
-            state.setDmbsSpecificOptions(command);
+            G state = getInitializedGlobalState();
             try (Connection con = provider.createDatabase(state)) {
                 QueryManager manager = new QueryManager(state);
                 try {
@@ -354,6 +352,20 @@ public final class Main {
                     throw new AssertionError(e);
                 }
             }
+        }
+
+        private G getInitializedGlobalState() {
+            G state = createGlobalState();
+            stateToRepro = provider.getStateToReproduce(databaseName);
+            stateToRepro.seedValue = seed;
+            state.setState(stateToRepro);
+            logger = new StateLogger(databaseName, provider, options);
+            Randomly r = new Randomly(seed);
+            state.setRandomly(r);
+            state.setDatabaseName(databaseName);
+            state.setMainOptions(options);
+            state.setDmbsSpecificOptions(command);
+            return state;
         }
 
         public StateLogger getLogger() {
@@ -397,6 +409,10 @@ public final class Main {
             } catch (Exception e) {
                 throw new AssertionError(e);
             }
+        }
+
+        public DatabaseProvider<G, O> getProvider() {
+            return provider;
         }
 
     }
@@ -453,6 +469,16 @@ public final class Main {
 
         ExecutorService execService = Executors.newFixedThreadPool(options.getNumberConcurrentThreads());
         DBMSExecutorFactory<?, ?> executorFactory = nameToProvider.get(jc.getParsedCommand());
+
+        try {
+            executorFactory.getDBMSExecutor("connectionTest", -1).testConnection();
+        } catch (SQLException e) {
+            System.err.println(
+                    "SQLancer failed creating a test database, indicating that SQLancer might have failed connecting to the DBMS. In order to change the username and password, you can use the --username and --password options. Currently, SQLancer does not yet support passing a host and port (see https://github.com/sqlancer/sqlancer/issues/95).\n\n");
+            e.printStackTrace();
+            return options.getErrorExitCode();
+        }
+
         for (int i = 0; i < options.getTotalNumberTries(); i++) {
             final String databaseName = "database" + i;
             final long seed;
